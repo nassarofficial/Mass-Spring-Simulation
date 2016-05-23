@@ -792,6 +792,24 @@ void CPhysEnv::HeunIntegrate(float DeltaTime)
 
 }
 
+void CPhysEnv::CopyParticles(tParticle* src, tParticle* dst)
+{
+	for (int i = 0; i < m_ParticleCnt; i++, src++, dst++)
+	{
+		dst->pos.x = src->pos.x;
+		dst->pos.y = src->pos.x;
+		dst->pos.z = src->pos.x;
+
+		dst->v.x = src->v.x;
+		dst->v.y = src->v.y;
+		dst->v.z = src->v.z;
+
+		dst->f.x = src->f.x;
+		dst->f.y = src->f.y;
+		dst->f.z = src->f.z;
+
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Function:	RK4Integrate 
@@ -801,7 +819,67 @@ void CPhysEnv::HeunIntegrate(float DeltaTime)
 ///////////////////////////////////////////////////////////////////////////////
 void CPhysEnv::RK4Integrate( float DeltaTime)
 {
-	// Your Code Here
+
+	// K1 = CurrentSys
+	CopyParticles(m_CurrentSys, m_TempSys[1]); 
+
+	//K2
+	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[2], DeltaTime / 2.0f);
+	ComputeForces(m_TempSys[2]);
+
+	//K3
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[3], DeltaTime / 2.0f);
+	ComputeForces(m_TempSys[3]);
+
+	//K4
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[3], m_TempSys[4], DeltaTime);
+	ComputeForces(m_TempSys[4]);
+
+
+	tParticle *k1, *k2, *k3, *k4;
+
+	k1 = m_TempSys[1];
+	k2 = m_TempSys[2];
+	k3 = m_TempSys[3];
+	k4 = m_TempSys[4];
+
+	float rkdiv = 1.0f / 6.0f;
+
+	// yn+1 = yn + (1/6)(k1 + 2k2 + 2k3 + k4) 
+
+	for (int i = 0; i < m_ParticleCnt; i++)
+	{
+		m_TempSys[0]->f.x = (k1->f.x + ((k2->f.x + k3->f.x) * 2.0f) + k4->f.x) * rkdiv;
+		m_TempSys[0]->f.y = (k1->f.y + ((k2->f.y + k3->f.y) * 2.0f) + k4->f.y) * rkdiv;
+		m_TempSys[0]->f.z = (k1->f.z + ((k2->f.z + k3->f.z) * 2.0f) + k4->f.z) * rkdiv;
+
+		m_TempSys[0]->v.x = (k1->v.x + ((k2->v.x + k3->v.x) * 2.0f) + k4->v.x) * rkdiv;
+		m_TempSys[0]->v.y = (k1->v.y + ((k2->v.y + k3->v.y) * 2.0f) + k4->v.y) * rkdiv;
+		m_TempSys[0]->v.z = (k1->v.z + ((k2->v.z + k3->v.z) * 2.0f) + k4->v.z) * rkdiv;
+
+		m_TempSys[0]++;
+
+		k1++;
+		k2++;
+		k3++;
+		k4++;
+	}
+
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime);
+
+
+}
+double CPhysEnv::CalculateError(tParticle	* System1, tParticle	* System2)
+{
+	double Error = 0;
+	for (int i = 0; i< m_ParticleCnt; i++)
+	{
+		Error = Error + sqrt(pow(System1->pos.x - System2->pos.x, 2) + pow(System1->pos.y - System2->pos.y, 2) + pow(System1->pos.z - System2->pos.z, 2));
+	}
+	System1++;
+	System2++;
+	Error = Error / m_ParticleCnt;
+	return Error;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -812,7 +890,9 @@ void CPhysEnv::RK4Integrate( float DeltaTime)
 ///////////////////////////////////////////////////////////////////////////////
 void CPhysEnv::RK4AdaptiveIntegrate( float DeltaTime)  
 {
-	// Your Code Here
+
+	// Your code here
+
 }
 ///////////////////////////////////////////////////////////////////////////////
 

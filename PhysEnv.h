@@ -147,7 +147,15 @@ private:
 	int		CheckForCollisions( tParticle	*system );
 	void	ResolveCollisions( tParticle	*system );
 	void	CompareBuffer(int size, float *buffer,float x, float y);
+	void    CopyParticles(tParticle* source, tParticle* destination);
+	double	CalculateError(tParticle *System1, tParticle *System2);
+	double m_AdaptiveErrorThreshold;
+	double m_DeltaTimeAdaptive;
+	double m_AdaptiveDecreaseStepFactor;
+	double m_AdaptiveIncreaseStepFactor;
+	BOOL m_AdaptiveFlag;
 
+	float               m_Step;
 // Implementation
 public:
 	virtual ~CPhysEnv();
