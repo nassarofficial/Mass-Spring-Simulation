@@ -779,9 +779,17 @@ void CPhysEnv::MidPointIntegrate( float DeltaTime)
 // Arguments:	DeltaTime that has passed since last iteration
 // Notes:		This integrator uses the Heun's method
 ///////////////////////////////////////////////////////////////////////////////
-void CPhysEnv::HeunIntegrate( float DeltaTime)
+void CPhysEnv::HeunIntegrate(float DeltaTime)
 {
-	// Your Code Here
+	// Predictor Function
+	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[0], DeltaTime);
+
+	// Calculate forces with predictor
+	ComputeForces(m_TempSys[0]);
+
+	// Corrector Function
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime / 2.0f);
+
 }
 
 
