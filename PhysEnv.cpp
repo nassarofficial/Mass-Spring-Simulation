@@ -820,52 +820,55 @@ void CPhysEnv::CopyParticles(tParticle* src, tParticle* dst)
 void CPhysEnv::RK4Integrate( float DeltaTime)
 {
 
-	// K1 = CurrentSys
-	CopyParticles(m_CurrentSys, m_TempSys[1]); 
+	// K1 just copy the system to temp
+	CopyParticles(m_CurrentSys, m_TempSys[1]);
 
-	//K2
+	// Integrate for K2 
 	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[2], DeltaTime / 2.0f);
-	ComputeForces(m_TempSys[2]);
+	ComputeForces(m_TempSys[2]); 
 
-	//K3
+	// Integrate for K3 
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[3], DeltaTime / 2.0f);
 	ComputeForces(m_TempSys[3]);
 
-	//K4
+	// Integrate for K4 
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[3], m_TempSys[4], DeltaTime);
 	ComputeForces(m_TempSys[4]);
 
-
-	tParticle *k1, *k2, *k3, *k4;
-
+	///
+	//From all those temp systems, get the final system
+	tParticle *k1, *k2, *k3, *k4, *temp;
+	temp = m_TempSys[0];
 	k1 = m_TempSys[1];
 	k2 = m_TempSys[2];
 	k3 = m_TempSys[3];
 	k4 = m_TempSys[4];
 
-	float rkdiv = 1.0f / 6.0f;
+	// 1/6
+	float rkadiv = 1.0f / 6.0f;
 
 	// yn+1 = yn + (1/6)(k1 + 2k2 + 2k3 + k4) 
 
 	for (int i = 0; i < m_ParticleCnt; i++)
 	{
-		m_TempSys[0]->f.x = (k1->f.x + ((k2->f.x + k3->f.x) * 2.0f) + k4->f.x) * rkdiv;
-		m_TempSys[0]->f.y = (k1->f.y + ((k2->f.y + k3->f.y) * 2.0f) + k4->f.y) * rkdiv;
-		m_TempSys[0]->f.z = (k1->f.z + ((k2->f.z + k3->f.z) * 2.0f) + k4->f.z) * rkdiv;
+		// force
+		temp->f.x = (k1->f.x + ((k2->f.x + k3->f.x) * 2.0f) + k4->f.x) * rkadiv;
+		temp->f.y = (k1->f.y + ((k2->f.y + k3->f.y) * 2.0f) + k4->f.y) * rkadiv;
+		temp->f.z = (k1->f.z + ((k2->f.z + k3->f.z) * 2.0f) + k4->f.z) * rkadiv;
 
-		m_TempSys[0]->v.x = (k1->v.x + ((k2->v.x + k3->v.x) * 2.0f) + k4->v.x) * rkdiv;
-		m_TempSys[0]->v.y = (k1->v.y + ((k2->v.y + k3->v.y) * 2.0f) + k4->v.y) * rkdiv;
-		m_TempSys[0]->v.z = (k1->v.z + ((k2->v.z + k3->v.z) * 2.0f) + k4->v.z) * rkdiv;
+		// velocity
+		temp->v.x = (k1->v.x + ((k2->v.x + k3->v.x) * 2.0f) + k4->v.x) * rkadiv;
+		temp->v.y = (k1->v.y + ((k2->v.y + k3->v.y) * 2.0f) + k4->v.y) * rkadiv;
+		temp->v.z = (k1->v.z + ((k2->v.z + k3->v.z) * 2.0f) + k4->v.z) * rkadiv;
 
-		m_TempSys[0]++;
-
+		temp++;
 		k1++;
 		k2++;
 		k3++;
 		k4++;
 	}
 
-	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime);
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime); // K4 
 
 
 }
@@ -891,7 +894,7 @@ double CPhysEnv::CalculateError(tParticle	* System1, tParticle	* System2)
 void CPhysEnv::RK4AdaptiveIntegrate( float DeltaTime)  
 {
 
-	// Your code here
+		// Your Code Here
 
 }
 ///////////////////////////////////////////////////////////////////////////////
