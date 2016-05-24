@@ -109,6 +109,7 @@ public:
 	BOOL				m_DrawShear;			// DRAW SHEAR CLOTH SPRINGS
 	BOOL				m_DrawBend;				// DRAW BEND CLOTH SPRINGS
 	int					m_IntegratorType;
+	bool                 m_firstRun;
 
 // Attributes
 private:
@@ -135,6 +136,17 @@ private:
 	tVector				m_MouseDragPos[2];		// POSITION OF DRAGGED MOUSE VECTOR
 	tCollisionSphere	*m_Sphere;
 	int					m_SphereCnt;
+	int                 m_MaxIterationsCount;
+	float               m_RelativeError;
+
+	double m_AdaptiveErrorThreshold;
+	double m_DeltaTimeAdaptive;
+	double m_AdaptiveDecreaseStepFactor;
+	double m_AdaptiveIncreaseStepFactor;
+	BOOL m_AdaptiveFlag;
+
+	float               m_Step;
+
 // Operations
 private:
 	inline void	IntegrateSysOverTime(tParticle *initial,tParticle *source, tParticle *target, float deltaTime);
@@ -149,13 +161,7 @@ private:
 	void	CompareBuffer(int size, float *buffer,float x, float y);
 	void    CopyParticles(tParticle* source, tParticle* destination);
 	double	CalculateError(tParticle *System1, tParticle *System2);
-	double m_AdaptiveErrorThreshold;
-	double m_DeltaTimeAdaptive;
-	double m_AdaptiveDecreaseStepFactor;
-	double m_AdaptiveIncreaseStepFactor;
-	BOOL m_AdaptiveFlag;
 
-	float               m_Step;
 // Implementation
 public:
 	virtual ~CPhysEnv();

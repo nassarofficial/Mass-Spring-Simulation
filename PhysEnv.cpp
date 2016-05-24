@@ -93,6 +93,16 @@ CPhysEnv::CPhysEnv()
 
 	m_SphereCnt = 0;
 
+	m_MaxIterationsCount = 5;
+	m_firstRun = true;
+	m_Step = 0.01;
+
+	m_AdaptiveErrorThreshold = 0.005;
+	m_DeltaTimeAdaptive = 0.1;
+	m_AdaptiveDecreaseStepFactor = 0.25;
+	m_AdaptiveIncreaseStepFactor = 0.2;
+	m_AdaptiveFlag = FALSE;
+
 }
 
 CPhysEnv::~CPhysEnv()
@@ -819,7 +829,6 @@ void CPhysEnv::CopyParticles(tParticle* src, tParticle* dst)
 ///////////////////////////////////////////////////////////////////////////////
 void CPhysEnv::RK4Integrate( float DeltaTime)
 {
-
 	// K1 just copy the system to temp
 	CopyParticles(m_CurrentSys, m_TempSys[1]);
 
@@ -868,8 +877,45 @@ void CPhysEnv::RK4Integrate( float DeltaTime)
 		k4++;
 	}
 
-	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime); // K4 
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TargetSys, DeltaTime); //Integrate the final system to the target
 
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Function:	RK4AdaptiveIntegrate 
+// Purpose:		Calculate new Positions and Velocities given a deltatime
+// Arguments:	DeltaTime that has passed since last iteration
+// Notes:		This integrator uses the fourth-order Runge-Kutta method based on step-halving technique
+///////////////////////////////////////////////////////////////////////////////
+void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
+{
+	/// Local Variables ///////////////////////////////////////////////////////////
+	if (m_AdaptiveFlag == FALSE)
+	{
+		m_DeltaTimeAdaptive = DeltaTime;
+		m_AdaptiveFlag = TRUE;
+	}
+
+
+	RK4Integrate(m_DeltaTimeAdaptive);		  //target system changed
+	CopyParticles(m_TargetSys, m_TempSys[5]); // Store Result of RK4 with Normal Step
+	RK4Integrate(m_DeltaTimeAdaptive / 2.0f); //target system changed
+	CopyParticles(m_CurrentSys, m_TempSys[6]); //Store Result of RK4 with half step
+	ComputeForces(m_TargetSys);				   
+	CopyParticles(m_TargetSys, m_CurrentSys);  //current system is the second RK integrated one
+	RK4Integrate(m_DeltaTimeAdaptive / 2.0f); // Store Result of RK4 with Half Step in TargetSys
+
+	//error between RK4 with normal step and RK4 with half step
+	double Error = CalculateError(m_TempSys[5], m_TargetSys);
+	if (Error <0.00005);
+	else if (Error > m_AdaptiveErrorThreshold)
+		m_DeltaTimeAdaptive = m_DeltaTimeAdaptive * pow(m_AdaptiveErrorThreshold / Error, m_AdaptiveDecreaseStepFactor);
+	else
+		m_DeltaTimeAdaptive = m_DeltaTimeAdaptive * pow(m_AdaptiveErrorThreshold / Error, m_AdaptiveIncreaseStepFactor);
+
+	CopyParticles(m_TempSys[5], m_TargetSys);
+	CopyParticles(m_TempSys[6], m_CurrentSys);
 
 }
 double CPhysEnv::CalculateError(tParticle	* System1, tParticle	* System2)
@@ -885,18 +931,7 @@ double CPhysEnv::CalculateError(tParticle	* System1, tParticle	* System2)
 	return Error;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Function:	RK4AdaptiveIntegrate 
-// Purpose:		Calculate new Positions and Velocities given a deltatime
-// Arguments:	DeltaTime that has passed since last iteration
-// Notes:		This integrator uses the fourth-order Runge-Kutta method based on step-halving technique
-///////////////////////////////////////////////////////////////////////////////
-void CPhysEnv::RK4AdaptiveIntegrate( float DeltaTime)  
-{
 
-		// Your Code Here
-
-}
 ///////////////////////////////////////////////////////////////////////////////
 
 int CPhysEnv::CheckForCollisions( tParticle	*system )
