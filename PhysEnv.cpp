@@ -4,6 +4,7 @@
 #include <GL/glu.h>
 #include <assert.h>
 #include <math.h>
+#include <iostream>
 
 #include "Clothy.h"
 #include "PhysEnv.h"
@@ -922,33 +923,96 @@ void CPhysEnv::RK4Integrate( float DeltaTime)
 
 void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 {
-	/// Local Variables ///////////////////////////////////////////////////////////
-	if (m_AdaptiveFlag == FALSE)
-	{
-		m_DeltaTimeAdaptive = DeltaTime;
-		m_AdaptiveFlag = TRUE;
-	}
 
+	float halfDeltaT = DeltaTime / 2.0f;
+	float quartDelta = DeltaTime / 4.0f;
 
-	RK4Integrate(m_DeltaTimeAdaptive);		  //target system changed
-	CopyParticles(m_TargetSys, m_TempSys[5]); // Store Result of RK4 with Normal Step
-	RK4Integrate(m_DeltaTimeAdaptive / 2.0f); //target system changed
-	CopyParticles(m_CurrentSys, m_TempSys[6]); //Store Result of RK4 with half step
-	ComputeForces(m_TargetSys);
-	CopyParticles(m_TargetSys, m_CurrentSys);  //current system is the second RK integrated one
-	RK4Integrate(m_DeltaTimeAdaptive / 2.0f); // Store Result of RK4 with Half Step in TargetSys
+	// Already we have K1
 
-											  //error between RK4 with normal step and RK4 with half step
-	double Error = CalculateError(m_TempSys[5], m_TargetSys);
+	// Integrate for K2 
+	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[0], halfDeltaT);
+	ComputeForces(m_TempSys[0]);
+	// Integrate for K3
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TempSys[1], halfDeltaT);
+	ComputeForces(m_TempSys[1]);
+	// Integrate for K4 
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[1], m_TempSys[2], DeltaTime);
+	ComputeForces(m_TempSys[2]);
 
-	if (Error <0.00005);
-	else if (Error > m_AdaptiveErrorThreshold)
-		m_DeltaTimeAdaptive = m_DeltaTimeAdaptive * pow(m_AdaptiveErrorThreshold / Error, m_AdaptiveDecreaseStepFactor);
-	else
-		m_DeltaTimeAdaptive = m_DeltaTimeAdaptive * pow(m_AdaptiveErrorThreshold / Error, m_AdaptiveIncreaseStepFactor);
+	// Velocity
+	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
+	m_TempSys[2]->v.y = (m_CurrentSys->v.y + 2 * m_TempSys[0]->v.y + 2 * m_TempSys[1]->v.y
+		+ m_TempSys[2]->v.y) / 6;
+	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
 
-	CopyParticles(m_TempSys[5], m_TargetSys);
-	CopyParticles(m_TempSys[6], m_CurrentSys);
+	// Compute
+	ComputeForces(m_TempSys[2]);
+
+	// Integrate
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[3], DeltaTime);
+
+	///////////////////////////////////////////////////////////////////////////
+
+	// For HALF DELTA
+	// Integrate for K2 
+	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[0], quartDelta);
+	ComputeForces(m_TempSys[0]);
+	// Integrate for K3
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TempSys[1], quartDelta);
+	ComputeForces(m_TempSys[1]);
+	// Integrate for K4 
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[1], m_TempSys[2], halfDeltaT);
+	ComputeForces(m_TempSys[2]);
+
+	// Velocity
+	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
+	m_TempSys[2]->v.y = (m_CurrentSys->v.y + 2 * m_TempSys[0]->v.y + 2 * m_TempSys[1]->v.y
+		+ m_TempSys[2]->v.y) / 6;
+	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
+	ComputeForces(m_TempSys[2]);
+	// Integrate
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[4], halfDeltaT);
+
+	ComputeForces(m_TempSys[4]);
+
+	// Integrate for K2 
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[4], m_TempSys[0], quartDelta);
+	ComputeForces(m_TempSys[0]);
+	// Integrate for K3 
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TempSys[1], quartDelta);
+	ComputeForces(m_TempSys[1]);
+	// Integrate for K4
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[1], m_TempSys[2], halfDeltaT);
+	ComputeForces(m_TempSys[2]);
+
+	// Velocity
+	m_TempSys[2]->v.x = (m_TempSys[4]->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
+	m_TempSys[2]->v.y = (m_TempSys[4]->v.y + 2 * m_TempSys[0]->v.y + 2 * m_TempSys[1]->v.y
+		+ m_TempSys[2]->v.y) / 6;
+	m_TempSys[2]->v.x = (m_TempSys[4]->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
+		+ m_TempSys[2]->v.x) / 6;
+
+	ComputeForces(m_TempSys[2]);
+
+	// Integrate
+	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TargetSys, halfDeltaT);
+
+	float current_error, new_error = 0.1, alpha, newDelta;
+
+	current_error = sqrt(pow((m_TargetSys->pos.x - m_TempSys[3]->pos.x), 2) +
+		pow((m_TargetSys->pos.y - m_TempSys[3]->pos.y), 2) +
+		pow((m_TargetSys->pos.z - m_TempSys[3]->pos.z), 2)) / 15;
+
+	if (new_error >= current_error) alpha = 0.2;
+	else alpha = 0.25;
+
+	newDelta = DeltaTime * abs(pow((new_error / current_error), alpha));
+
 
 }
 
