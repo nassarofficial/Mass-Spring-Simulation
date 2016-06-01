@@ -926,19 +926,28 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 
 	float halfDeltaT = DeltaTime / 2.0f;
 	float quartDelta = DeltaTime / 4.0f;
-
-	// Already we have K1
+	//RK4, 3ADI
+	// Already we have K1 (current system)
 
 	// Integrate for K2 
+	//integrate from k1 with half step to get k2
 	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[0], halfDeltaT);
 	ComputeForces(m_TempSys[0]);
 	// Integrate for K3
+	//integrate from k2 with another half step to get k3
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[0], m_TempSys[1], halfDeltaT);
 	ComputeForces(m_TempSys[1]);
 	// Integrate for K4 
+	//integrate from k3 with half step to get k4
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[1], m_TempSys[2], DeltaTime);
 	ComputeForces(m_TempSys[2]);
+	
+	//k1 -> currentSys
+	//k2 -> TempSys[0]
+	//k3 -> TempSys[1]
+	//k4 -> TempSys[2]
 
+	// yn+1 = yn + (1/6)(k1 + 2k2 + 2k3 + k4) 
 	// Velocity
 	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
 		+ m_TempSys[2]->v.x) / 6;
@@ -947,15 +956,17 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
 		+ m_TempSys[2]->v.x) / 6;
 
-	// Compute
+
+	// Compute forces
 	ComputeForces(m_TempSys[2]);
+
 
 	// Integrate
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[3], DeltaTime);
 
 	///////////////////////////////////////////////////////////////////////////
 
-	// For HALF DELTA
+	// RK4 of first half
 	// Integrate for K2 
 	IntegrateSysOverTime(m_CurrentSys, m_CurrentSys, m_TempSys[0], quartDelta);
 	ComputeForces(m_TempSys[0]);
@@ -974,11 +985,13 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
 		+ m_TempSys[2]->v.x) / 6;
 	ComputeForces(m_TempSys[2]);
-	// Integrate
+	// Integrate 
+	/////half step reached
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[4], halfDeltaT);
 
 	ComputeForces(m_TempSys[4]);
-
+	
+	//the other half step
 	// Integrate for K2 
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[4], m_TempSys[0], quartDelta);
 	ComputeForces(m_TempSys[0]);
@@ -1004,10 +1017,11 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 
 	float current_error, new_error = 0.1, alpha, newDelta;
 
+	//halved system - full step system gets the error
 	current_error = sqrt(pow((m_TargetSys->pos.x - m_TempSys[3]->pos.x), 2) +
 		pow((m_TargetSys->pos.y - m_TempSys[3]->pos.y), 2) +
 		pow((m_TargetSys->pos.z - m_TempSys[3]->pos.z), 2)) / 15;
-
+	// If the error is high, decrease current step size. And vice versa.
 	if (new_error >= current_error) alpha = 0.2;
 	else alpha = 0.25;
 
