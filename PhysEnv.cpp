@@ -958,7 +958,7 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 
 
 	// Compute forces
-	ComputeForces(m_TempSys[2]);
+	//ComputeForces(m_TempSys[2]);
 
 
 	// Integrate
@@ -984,7 +984,7 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 		+ m_TempSys[2]->v.y) / 6;
 	m_TempSys[2]->v.x = (m_CurrentSys->v.x + 2 * m_TempSys[0]->v.x + 2 * m_TempSys[1]->v.x
 		+ m_TempSys[2]->v.x) / 6;
-	ComputeForces(m_TempSys[2]);
+	//ComputeForces(m_TempSys[2]);
 	// Integrate 
 	/////half step reached
 	IntegrateSysOverTime(m_CurrentSys, m_TempSys[2], m_TempSys[4], halfDeltaT);
@@ -1023,6 +1023,7 @@ void CPhysEnv::RK4AdaptiveIntegrate(float DeltaTime)
 		pow((m_TargetSys->pos.z - m_TempSys[3]->pos.z), 2)) / 15;
 	// If the error is high, decrease current step size. And vice versa.
 	if (new_error >= current_error) alpha = 0.2;
+
 	else alpha = 0.25;
 
 	newDelta = DeltaTime * abs(pow((new_error / current_error), alpha));
